@@ -1,9 +1,0 @@
-
-
-[build]
-
-target-dir = "../bin/producer"
-
-[env]
-
-OPENAI_KEY = { value = "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", force = true }
