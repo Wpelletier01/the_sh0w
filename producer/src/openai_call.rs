@@ -1,9 +1,14 @@
 #![allow(dead_code)]
 
+
+use std::fmt::{Display, Formatter};
 use reqwest::Client;
-use error_stack::Result;
+use futures::TryFutureExt;
 use json::{object, JsonValue};
+
 use super::logger::{CWARN,CERROR};
+use serde::Deserialize;
+use serde_json::Value;
 
 /*
 
@@ -59,26 +64,11 @@ mod test {
             logit_bias: None,
         };
 
-        info.body().unwrap();
+        info.body();
 
     }
 
 }
-//
-//
-//-------------------------------------------------------------------------------------------------
-// Error
-//
-pub enum EOpenAi {
-
-    Request,
-    BadInfo,
-
-
-}
-
-
-
 //
 //
 // ------------------------------------------------------------------------------------------------
@@ -112,10 +102,15 @@ impl ModelType {
 }
 //
 //
+#[derive(Deserialize,Debug)]
 struct PromptResponse {
 
-    message:        String,
-    finish_reason:  String,
+    id:         String,
+    object:     String,
+    created:    i64,
+    model:      String,
+    choice:     Value,
+    usage:      Value
 
 }
 //
@@ -139,7 +134,7 @@ struct PromptRequestInfo {
 impl PromptRequestInfo {
 
 
-    fn body(&mut self) -> Result<String,EOpenAi> {
+    fn body(&mut self) -> String {
 
         let max_tokens = self.max_word.unwrap_or(16);
 
@@ -288,7 +283,7 @@ impl PromptRequestInfo {
         }
 
 
-        Ok(body.to_string())
+        body.to_string()
 
 
     }
@@ -366,11 +361,40 @@ fn validate_penalty(penalty:f32) -> f32 {
 //
 //
 // ------------------------------------------------------------------------------------------------
+// Connection
 //
+struct Connection {
+
+    client: Client
+
+}
 //
+impl Connection {
+
+    fn init() -> Self { Self { client: Client::new() } }
+
+    async fn send_prompt(&self,body:String) -> Result<(), Box<dyn std::error::Error>> {
+
+        let response = self.client
+            .post("https://api.openai.com/v1/completions")
+            .header("Content-Type", "application/json")
+            .header("Authorization", format!("Bearer {}", env!("OPENAI_KEY")))
+            .body(body)
+            .send()
+            .await?
+            .json::<PromptResponse>()
+            .await?;
 
 
-//fn send_prompt(info:PromptRequestInfo) -> Result<PromptResponse,EOpenAi>  {}
+
+   
+        Ok(())
+
+
+    }
+
+
+}
     
 
 
